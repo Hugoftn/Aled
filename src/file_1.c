@@ -16,29 +16,53 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/wait.h>
+#include <errno.h>
+
+void exec(char *command, char **args, char **env)
+{
+    if (fork() == 0) {
+        execve(command, args, env);
+        if (errno != 0)
+            my_printf("%s\n", strerror(errno));
+    }
+}
+
+char **get_tab_args(char **args)
+{
+    char **tab_args = malloc(sizeof(char*) * 20);
+    int i = 0;
+
+    while (args[i] != NULL) {
+        tab_args[i] = malloc(sizeof(char) * 30);
+        tab_args[i] = args[i + 1];
+        i++;
+    }
+    return tab_args;
+}
+
+char *get_working_paths(char **paths)
+{
+    for (int i = 0; paths[i + 1] != NULL; i++) {
+        if (access(paths[i], F_OK) != -1)
+            return paths[i];
+    }
+}
 
 char **add_funct_to_paths(char **paths, char **args)
 {
-    char *buffer = malloc(sizeof(char) * 100);
+    char **buffer = malloc(sizeof(char*) * 15);
     char *funct = malloc(sizeof(char) * my_strlen(args[0]));
     int temp = 0;
-    int k = 0;
 
     funct = args[0];
-    while (paths[k + 1] != NULL) {
+    for (int k = 0; paths[k + 1] != NULL; k++) {
         temp = my_strlen(paths[k]) + my_strlen(funct) + 1;
-        buffer = my_strcpy(buffer, paths[k + 1]);
+        buffer[k] = malloc(sizeof(char) * temp);
+        buffer[k] = my_strcpy(buffer[k], paths[k + 1]);
         paths[k] = malloc(sizeof(char) * temp);
-        buffer = my_strcat(buffer, "/");
-        paths[k] = my_strcat(buffer, funct);
-        printf("paths[%d] during while: %s\n", k, paths[k]);
-        k++;
+        buffer[k] = my_strcat(buffer[k], "/");
+        paths[k] = my_strcat(buffer[k], funct);
     }
-    printf("paths (end of funct):\n");
-    for (int m = 0; paths[m] != NULL; m++)
-        my_printf("paths[%d] after while: %s\n", m, paths[m]);
-    free(funct);
-    free(buffer);
     return paths;
 }
 
@@ -51,8 +75,6 @@ int get_path_line(char **env)
             line++;
         else
             break;
-    // printf("%d\n", line);
-    // printf("env[line]: %s\n", env[line]);
     }
     return line;
 }
@@ -71,8 +93,6 @@ char **get_paths(char **env)
         j++;
     }
     paths[j] = NULL;
-    // for (int k = 0; paths[k] != NULL; k++)
-    //     my_printf("paths[%d]: %s\n", k, paths[k]);
     return paths;
 }
 
@@ -105,31 +125,34 @@ char **get_args(char *buffer)
         strToken = strtok(NULL, " ");
         i++;
     }
-    // for (int k = 0; args[k + 1] != NULL; k++)
-    //     my_printf("args[%d]: %s\n", k, args[k]);
     return args;
 }
 
 void main(int ac, char **av, char **env)
 {
+    char *command;
     char *buffer = malloc(sizeof(char) * 150);
+    char **tab_args;
     char **args;
     char **paths;
     int temp = 0;
+    int status;
 
     while (1) {
         my_printf("$> ");
         temp = read(STDIN_FILENO, buffer, 150);
         args = get_args(buffer);
-        for (int k = 0; args[k + 1] != NULL; k++)
-            my_printf("final args[%d]: %s\n", k, args[k]);
         paths = get_paths(env);
-        printf("post add\n");
         paths = add_funct_to_paths(paths, args);
-
-        printf("paths:\n");
-        for (int k = 0; paths[k] != NULL; k++)
-            my_printf("paths[%d]: %s\n", k, paths[k]);
+        tab_args = get_tab_args(args);
+        for (int i = 0; args[i + 1] != NULL; i++)
+            printf("args[%d]: %s\n", i, args[i]);
+        command = get_working_paths(paths);
+        printf("command: %s\n", command);
+        // for (int i = 0; env[i + 1] != NULL; i++)
+        //     printf("%s\n", env[i]);
+        exec(command, args, env);
+        printf("status: %d\n", status);
         buffer[temp - 1] = '\0';
     }
 }

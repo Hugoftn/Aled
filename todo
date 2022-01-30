@@ -1,0 +1,5 @@
+choper la commande + arguments
+split le path dans un char **
+rajouter la commande a la fin de chaque path
+envoie un access(path/commande) == 1 si oui, 0 si non
+renvoie le bon path et tu execve le bon pass + les arguments
